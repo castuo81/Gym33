@@ -146,6 +146,23 @@ ul.tips li{margin:4px 0}
 details.hd2 summary{font-size:12.5px;font-weight:600;color:var(--acc);margin-top:4px}
 .avw{margin-top:6px;background:var(--bg);border-radius:9px;padding:4px 2px 0;max-width:340px}
 .avw svg{width:100%;height:auto;display:block}
+#fin{position:fixed;inset:0;z-index:20;background:rgba(20,10,8,.55);display:flex;align-items:flex-end;justify-content:center;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+#fin.hide{display:none}
+#fin .box{background:var(--card);color:var(--ink);border-radius:20px;max-width:460px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+#fin .top{background:linear-gradient(135deg,#ff8a3d,#d4243a);color:#fff;padding:18px 18px 16px;border-radius:20px 20px 0 0}
+#fin .top .big{font-size:30px;line-height:1}
+#fin .top h2{margin:8px 0 4px;font-size:21px;color:#fff}
+#fin .top p{margin:0;font-size:14.5px;opacity:.95}
+#fin .stats{display:flex;gap:8px;margin-top:12px}
+#fin .stats div{flex:1;background:rgba(255,255,255,.18);border-radius:10px;padding:7px 6px;text-align:center;font-size:11px}
+#fin .stats b{display:block;font-size:17px}
+#fin .diet{padding:14px 18px 6px}
+#fin .diet h3{margin:0 0 6px;font-size:15px}
+#fin .diet .macro{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+#fin .diet .macro span{background:var(--soft);color:var(--acc);font-weight:700;font-size:12px;padding:4px 8px;border-radius:99px}
+#fin .diet ul{margin:0;padding-left:18px;font-size:14px}
+#fin .diet li{margin:4px 0}
+#fin .foot{padding:8px 18px 16px}
 .alt{font-size:12px;color:var(--acc2);margin-top:3px;font-weight:500}
 .exrow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
 .exrow:first-child{border-top:0}
@@ -221,6 +238,7 @@ details.hd2 summary{font-size:12.5px;font-weight:600;color:var(--acc);margin-top
         <tr><td class="mute" style="white-space:nowrap">21 nov</td><td>La página pasa a formato de app («Gym 33»): pestaña Hoy para entrenar marcando cada serie con botones grandes, temporizador de descanso con aviso, barra de pestañas con iconos, y lista para añadir a la pantalla de inicio del móvil.</td></tr>  <tr><td class="mute" style="white-space:nowrap">21 nov</td><td>Peso corporal: 76,5 kg. Añadida gráfica de evolución del peso en el Panel; ese peso se usa como carga en los ejercicios con peso corporal.</td></tr>
         <tr><td class="mute" style="white-space:nowrap">21 nov</td><td>App aparte a pantalla completa en castuo81.github.io/Gym33, con botón «Enviar a Claude», y nuevo icono naranja con la silueta de las dominadas y el 33.</td></tr>
         <tr><td class="mute" style="white-space:nowrap">21 nov</td><td>Colores de la app en el naranja del icono. Día A: el curl femoral tumbado pasa a curl femoral sentado (no te gustaba el tumbado); si solo hay máquina tumbada, curl femoral de pie en polea. La sentadilla con barra del día A pasa a sentadilla hack (la de discos de tu sala), 4×8–10. Día B: el peso muerto rumano pasa a pull-through en polea, y los gemelos se hacen sentado (es la máquina que hay). El pallof press pasa a giros rusos con disco. Día C: hip thrust en la máquina del gym en vez de con barra.</td></tr>
+        <tr><td class="mute" style="white-space:nowrap">21 nov</td><td>Al terminar cada sesión sale un mensaje de ánimo (con tus marcas mejoradas) y qué comer ese día según el tipo de día: proteína ~2 g/kg, hidratos según la carga de pierna, agua y ejemplos de comida y cena.</td></tr>
       </table>
     </div>
     <div class="card">
@@ -834,7 +852,7 @@ hb.addEventListener("click",async ev=>{
     const ex=wk.ex.map(x=>({n:x.n,s:x.sets.filter(s=>s.ok||s.r).map(s=>[+String(s.kg).replace(",",".")||0,+s.r||0]),done:x.sets.every(s=>s.ok)})).filter(x=>x.s.length);
     if(!ex.length){ toast("Marca al menos una serie"); return; }
     const sObj={id:uid(),ts:Date.now(),tipo:"pesas",fecha:today(),dia:wk.dia,titulo:DAYS[wk.dia].name,lugar:"CDM Cea Bermúdez",duracion:Math.max(1,Math.round((Date.now()-wk.start)/60000)),ex,cardio:+wk.cardio||0,peso:0,rpe:0,notas:""};
-    t.disabled=true; await persist(sObj); wk=null; pick=null; wkSave(); renderHoy(); toast("Sesión guardada 💪"); show("panel"); return;
+    const prev=sessions.slice(); t.disabled=true; await persist(sObj); wk=null; pick=null; wkSave(); renderHoy(); show("panel"); finMsg(sObj,prev); return;
   }
   const b=t.closest(".setbtn"); if(b&&b.dataset.i!==undefined){
     const i=+b.dataset.i, j=+b.dataset.j, st=wk.ex[i].sets[j], e=DAYS[wk.dia].ex[i]||[];
@@ -844,6 +862,56 @@ hb.addEventListener("click",async ev=>{
     if(st.ok) startRest(restFor(e));
   }
 });
+
+/* ---------- MENSAJE AL TERMINAR ---------- */
+const DIETA={
+  A:{t:"Día de pierna fuerte (hack, cuádriceps, femoral) y pecho", hc:5,
+     comida:"Arroz con pollo y verduras, o pasta con atún y tomate.",
+     cena:"Tortilla de 2–3 huevos con patata y ensalada.",
+     extra:"Hoy los hidratos son tus aliados: el arroz, la pasta o la patata recargan las piernas."},
+  B:{t:"Día de hombro, glúteo y femoral", hc:4,
+     comida:"Lentejas o garbanzos con algo de carne magra.",
+     cena:"Salmón al horno con boniato o patata y verduras.",
+     extra:"El pescado azul ayuda a recuperar articulaciones y hombros."},
+  C:{t:"Día de glúteo y pierna (hip thrust, búlgara)", hc:5,
+     comida:"Pasta integral con pavo y tomate.",
+     cena:"Merluza con arroz y verduras salteadas.",
+     extra:"Segundo día fuerte de pierna: no te quedes corto de hidratos."},
+  D:{t:"Día de pecho, belt squat y espalda", hc:4,
+     comida:"Ternera a la plancha con quinoa o arroz y ensalada.",
+     cena:"Revuelto de huevos con champiñones y pan integral.",
+     extra:"Buen día para cuidar el lumbar: proteína y verdura en cada comida."}
+};
+const ANIMO=["¡Sesión completada! Así se construye el cuerpo que buscas: semana a semana.",
+  "¡Hecho! Lo difícil es venir, y hoy has venido y has cumplido.",
+  "¡Otra más en la cuenta! La constancia te está haciendo más fuerte.",
+  "¡Bien trabajado! Cada serie de hoy es músculo de mañana.",
+  "¡Enhorabuena! Hoy has sumado; tu yo de dentro de tres meses te lo agradece."];
+function lastPeso(){ const p=sessions.filter(x=>+x.peso>0).sort((a,b)=>(a.fecha>b.fecha?1:-1)); return p.length?+p[p.length-1].peso:76.5; }
+function finMsg(sObj,prev){
+  const series=sObj.ex.reduce((a,e)=>a+e.s.length,0), vol=Math.round(sObj.ex.reduce((a,e)=>a+e.s.reduce((b,t)=>b+t[0]*t[1],0),0));
+  // marcas personales frente a sesiones anteriores
+  const prs=[];
+  sObj.ex.forEach(e=>{ const now=Math.max(0,...e.s.map(t=>e1rm(t[0],t[1]))); if(!now) return;
+    let best=0; prev.forEach(p=>(p.ex||[]).filter(x=>x.n===e.n).forEach(x=>(x.s||[]).forEach(t=>{ best=Math.max(best,e1rm(t[0],t[1])); })));
+    if(best&&now>best*1.005) prs.push(e.n); });
+  const dom=sObj.ex.find(e=>/dominadas/i.test(e.n)); const domR=dom?dom.s.reduce((a,t)=>a+(+t[1]||0),0):0;
+  const total=prev.filter(x=>x.tipo==="pesas").length+1;
+  let msg=ANIMO[total%ANIMO.length];
+  if(prs.length) msg+=" Y hoy has mejorado tu marca en "+prs.slice(0,2).join(" y ")+(prs.length>2?" y "+(prs.length-2)+" más":"")+". 🔥";
+  else if(domR) msg+=" "+domR+" dominadas hoy, ¡a por las 4×12 limpias!";
+  const d=DIETA[sObj.dia]||DIETA.A, kg=lastPeso(), prot=Math.round(kg*2/5)*5, hc=Math.round(kg*d.hc/10)*10, agua=sObj.duracion>=60?3:2.5;
+  document.getElementById("finBox").innerHTML=`<div class="top"><div class="big">💪🔥</div><h2>¡${esc(sObj.titulo||"Sesión")} completado!</h2><p>${esc(msg)}</p>
+   <div class="stats"><div><b>${sObj.duracion}'</b>duración</div><div><b>${series}</b>series</div><div><b>${vol>=1000?(vol/1000).toFixed(1).replace(".",",")+" t":vol+" kg"}</b>levantado</div></div></div>
+   <div class="diet"><h3>🍽️ Qué comer hoy</h3><div class="note" style="margin:0 0 8px">${esc(d.t)}. Para ${String(kg).replace(".",",")} kg y ganar músculo:</div>
+   <div class="macro"><span>Proteína ~${prot} g</span><span>Hidratos ~${hc} g</span><span>Agua ${String(agua).replace(".",",")} L</span></div>
+   <ul><li><b>En la hora siguiente:</b> ${esc(d.comida)}</li><li><b>Merienda:</b> yogur griego o skyr con fruta y un puñado de frutos secos.</li><li><b>Cena:</b> ${esc(d.cena)}</li><li>${esc(d.extra)}</li></ul>
+   <div class="note" style="margin-top:8px">Reparte la proteína en 4 tomas de unos ${Math.round(prot/4/5)*5} g. Orientativo, no sustituye a un nutricionista.</div></div>
+   <div class="foot"><button class="btn" id="finOk">¡Vamos! 🙌</button></div>`;
+  document.getElementById("fin").classList.remove("hide");
+  try{ navigator.vibrate&&navigator.vibrate([80,60,80]); }catch(e){}
+}
+document.addEventListener("click",ev=>{ if(ev.target.id==="finOk"||ev.target.id==="fin") document.getElementById("fin").classList.add("hide"); });
 
 /* ---------- NAV ---------- */
 function show(v){ if(v==="hoy") renderHoy(); ["hoy","rutina","reg","panel","proy"].forEach(x=>document.getElementById("v-"+x).classList.toggle("hide",x!==v)); document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v)); window.scrollTo(0,0); }
@@ -876,5 +944,6 @@ setStatus(sessions.length? "Datos de este dispositivo":"Sin sesiones todavía");
   }catch(e){ setStatus("Guardando solo en este dispositivo"); }
 })();
 </script>
+<div id="fin" class="hide"><div class="box" id="finBox"></div></div>
 </body>
 </html>
