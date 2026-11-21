@@ -717,8 +717,13 @@ async function standalone(){
       lsSentSave([...sent].filter(id=>!ids.has(id)));
     }
   }catch(e){}
-  renderSend();
+  renderSend(); checkV();
 }
+// auto-actualización: al volver a la app, si hay versión nueva, recarga sola
+let APPV=null;
+async function checkV(){ try{ const r=await fetch("version.txt?t="+Date.now(),{cache:"no-store"}); if(!r.ok) return; const v=(await r.text()).trim(); if(APPV===null){ APPV=v; return; } if(v!==APPV && !document.querySelector("input:focus")){ location.reload(); } }catch(e){} }
+document.addEventListener("visibilitychange",()=>{ if(SA && document.visibilityState==="visible") checkV(); });
+setInterval(()=>{ if(SA && document.visibilityState==="visible") checkV(); },10*60*1000);
 function lsSentLoad(){ try{ return JSON.parse(localStorage.getItem(LS+"_sent")||"[]"); }catch(e){ return []; } }
 function lsSentSave(a){ try{ localStorage.setItem(LS+"_sent",JSON.stringify(a)); }catch(e){} }
 let REMOTE_IDS=null;
