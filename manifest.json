@@ -1,1 +1,1 @@
-{"name": "Gym 33", "short_name": "Gym 33", "start_url": ".", "display": "standalone", "background_color": "#f4f3ef", "theme_color": "#1f5c4a", "icons": [{"src": "i33-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "i33-512.png", "sizes": "512x512", "type": "image/png"}]}
+{"name": "Gym 33", "short_name": "Gym 33", "start_url": ".", "display": "standalone", "background_color": "#e8502f", "theme_color": "#e8502f", "icons": [{"src": "i33-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "i33-512.png", "sizes": "512x512", "type": "image/png"}]}
