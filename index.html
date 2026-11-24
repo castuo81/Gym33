@@ -168,6 +168,7 @@ details.hd2 summary{font-size:12.5px;font-weight:600;color:var(--acc);margin-top
 #fin .diet ul{margin:0;padding-left:18px;font-size:14px}
 #fin .diet li{margin:4px 0}
 #fin .foot{padding:8px 18px 16px}
+.obj{margin-top:5px;font-size:12.5px;font-weight:700;color:var(--acc);background:var(--soft);border-radius:8px;padding:5px 8px;display:inline-block}
 .alt{font-size:12px;color:var(--acc2);margin-top:3px;font-weight:500}
 .exrow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
 .exrow:first-child{border-top:0}
@@ -244,6 +245,7 @@ details.hd2 summary{font-size:12.5px;font-weight:600;color:var(--acc);margin-top
         <tr><td class="mute" style="white-space:nowrap">21 nov</td><td>App aparte a pantalla completa en castuo81.github.io/Gym33, con botón «Enviar a Claude», y nuevo icono naranja con la silueta de las dominadas y el 33.</td></tr>
         <tr><td class="mute" style="white-space:nowrap">21 nov</td><td>Colores de la app en el naranja del icono. Día A: el curl femoral tumbado pasa a curl femoral sentado (no te gustaba el tumbado); si solo hay máquina tumbada, curl femoral de pie en polea. La sentadilla con barra del día A pasa a sentadilla hack (la de discos de tu sala), 4×8–10. Día B: el peso muerto rumano pasa a pull-through en polea, y los gemelos se hacen sentado (es la máquina que hay). El pallof press pasa a giros rusos con disco. Día C: hip thrust en la máquina del gym en vez de con barra.</td></tr>
         <tr><td class="mute" style="white-space:nowrap">21 nov</td><td>Al terminar cada sesión sale un mensaje de ánimo (con tus marcas mejoradas) y qué comer ese día según el tipo de día: proteína ~2 g/kg, hidratos según la carga de pierna, agua y ejemplos de comida y cena.</td></tr>
+        <tr><td class="mute" style="white-space:nowrap">24 nov</td><td>Peso de hoy en cada ejercicio (modo entreno): la app aplica sola la doble progresión. Si la última vez completaste todas las series al tope del rango, sube peso (2,5 kg; 10 kg en hack, prensa y belt squat); si no, mismo peso y una repetición más. En dominadas e hiperextensiones, lastre al completar 4×12.</td></tr>
       </table>
     </div>
     <div class="card">
@@ -363,7 +365,7 @@ const DAYS = {
   A:{name:"Día A", tag:"Mixto", cardio:"10 min bici, ritmo cómodo", ex:[
     ["Dominadas","4","10–12","Intercaladas, como las haces tú: 1 serie de dominadas, 1 serie del ejercicio marcado como intercalado, 90 s de descanso y repetir. Empieza en 4×10 y sube hasta 4×12; luego añade 2,5 kg de lastre. Si no salen: máquina de dominadas asistidas del gym."],
     ["Press plano con mancuernas","4","8–10","Intercalado con las dominadas. Tumbado en banco plano, como lo sueles hacer."],
-    ["Sentadilla hack","4","8–10","Sustituye a la sentadilla con barra. Espalda pegada al respaldo, baja controlando hasta 90° y sube sin bloquear rodillas. Hoy hiciste 4×10 con 10 kg por lado: prueba 15 kg por lado. 2 min de descanso.","Belt squat (la máquina de sentadilla con cinturón del gym): carga las piernas sin cargar la espalda."],
+    ["Sentadilla hack","4","8–10","Sustituye a la sentadilla con barra. Espalda pegada al respaldo, baja controlando hasta 90° y sube sin bloquear rodillas. La app te marca el peso de cada día.","Belt squat (la máquina de sentadilla con cinturón del gym): carga las piernas sin cargar la espalda."],
     ["Extensión de cuádriceps","3","12–15","Sube controlando y aguanta 1 s arriba."],
     ["Curl femoral sentado","3","10–12","Sustituye al curl tumbado. Muslo bien sujeto por el rodillo y baja controlando. Si la máquina de tu gym solo es tumbada: curl femoral de pie en polea con tobillera, 3 × 12 por pierna."],
     ["Elevaciones laterales","3","12–15","Mancuernas o polea."],
@@ -805,7 +807,28 @@ try{ wk=JSON.parse(localStorage.getItem(WK)||"null"); }catch(e){ wk=null; }
 function wkSave(){ try{ wk?localStorage.setItem(WK,JSON.stringify(wk)):localStorage.removeItem(WK); }catch(e){} }
 function lowRep(r){ const m=String(r).match(/\d+/); return m?m[0]:""; }
 function restFor(e){ if(e[5]==="core") return 45; const lo=+lowRep(e[2])||10; return lo<=8?150:90; }
-function wkNew(dia){ const d=DAYS[dia]; wk={dia,start:Date.now(),cardio:"",cardioOk:false,ex:d.ex.map(e=>{ const n=parseInt(e[1])||3, last=lastFor(e[0]); return {n:e[0],sets:Array.from({length:n},(_,j)=>({kg:last&&last.s[j]&&last.s[j][0]?last.s[j][0]:"",r:"",ok:false}))}; })}; wkSave(); }
+function wkNew(dia){ const d=DAYS[dia]; wk={dia,start:Date.now(),cardio:"",cardioOk:false,ex:d.ex.map(e=>{ const n=parseInt(e[1])||3, last=lastFor(e[0]), ob=objetivo(e,last); return {n:e[0],sets:Array.from({length:n},(_,j)=>({kg:ob&&ob.kg?ob.kg:(last&&last.s[j]&&last.s[j][0]?last.s[j][0]:""),r:"",ok:false}))}; })}; wkSave(); }
+/* ---------- PESO DE HOY (doble progresión) ---------- */
+function objetivo(e,last){
+  if(!e||!last||!last.s||!last.s.length) return null;
+  const rg=String(e[2]||""); if(/\bs\b|seg|min/.test(rg)) return null;
+  const nums=(rg.match(/\d+/g)||[]).map(Number); if(!nums.length) return null;
+  const lo=nums[0], hi=nums[1]||nums[0];
+  const sets=last.s.filter(t=>+t[1]>0); if(!sets.length) return null;
+  const kg=Math.max(...sets.map(t=>+t[0]||0)), minR=Math.min(...sets.map(t=>+t[1])), maxR=Math.max(...sets.map(t=>+t[1]));
+  const nSets=parseInt(e[1])||sets.length, full=sets.length>=nSets && minR>=hi;
+  const bw=/dominadas|hiperext|paralelas|elevaci|plancha|colgado/i.test(e[0]);
+  const f1=v=>String(Math.round(v*10)/10).replace(".",",");
+  if(bw){
+    return full?{kg:"",r:lo,txt:`Completaste ${nSets}×${hi}: añade 2,5 kg de lastre y vuelve a ${lo} reps`}
+               :{kg:"",r:Math.min(hi,maxR+1),txt:`Objetivo: ${Math.min(hi,maxR+1)} reps por serie (última vez ${minR}–${maxR})`};
+  }
+  if(!kg) return null;
+  const inc=/hack|prensa|belt/i.test(e[0])?10:2.5, ps=/hack/i.test(e[0])?v=>` (${f1(v/2)} por lado)`:v=>"";
+  if(full) return {kg:kg+inc,r:lo,txt:`Hoy ${f1(kg+inc)} kg${ps(kg+inc)} × ${lo}–${hi} · sube ${f1(inc)} kg porque completaste ${nSets}×${hi}`};
+  const r=Math.min(hi,minR+1);
+  return {kg,r,txt:`Hoy ${f1(kg)} kg${ps(kg)} · intenta ${r} reps en todas las series (última vez ${minR}–${maxR})`};
+}
 function mmss(t){ t=Math.max(0,Math.round(t)); return Math.floor(t/60)+":"+String(t%60).padStart(2,"0"); }
 function renderHoy(){
   const el=document.getElementById("hoyBody");
@@ -823,12 +846,12 @@ function renderHoy(){
     <div class="note">${ok} de ${tot} series hechas</div><div class="pbar"><i style="width:${tot?Math.round(ok*100/tot):0}%"></i></div></div>`;
   let coreHd=false;
   wk.ex.forEach((x,i)=>{
-    const e=d.ex[i]||[x.n,"","",""], last=lastFor(x.n), done=x.sets.every(s=>s.ok);
+    const e=d.ex[i]||[x.n,"","",""], last=lastFor(x.n), done=x.sets.every(s=>s.ok), ob=objetivo(e,last);
     if(e[5]==="core"&&!coreHd){ coreHd=true; h+=`<div class="corehd" style="border:0;padding-left:4px">Abdominales, oblicuos y plancha</div>`; }
     h+=`<div class="card exc ${done?'done':''}"><div class="exh"><div class="thumb">${pic(x.n)}</div><div class="tx"><b class="exn" style="font-size:15px">${esc(x.n)}</b><div class="mach">${e[1]} × ${esc(e[2])} · descanso ${mmss(restFor(e))}</div>
-      <div class="note">${last?"Última vez: "+last.s.filter(t=>t[0]||t[1]).map(t=>(t[0]?String(t[0]).replace(".",",")+"×":"")+t[1]).join(" · "):"Primera vez"}</div>${e[3]?`<div class="note">${esc(e[3])}</div>`:""}${e[4]?`<div class="alt">Si molesta el piriforme: ${esc(e[4])}</div>`:""}</div></div>
+      <div class="note">${last?"Última vez: "+last.s.filter(t=>t[0]||t[1]).map(t=>(t[0]?String(t[0]).replace(".",",")+"×":"")+t[1]).join(" · "):"Primera vez"}</div>${ob?`<div class="obj">🎯 ${esc(ob.txt)}</div>`:""}${e[3]?`<div class="note">${esc(e[3])}</div>`:""}${e[4]?`<div class="alt">Si molesta el piriforme: ${esc(e[4])}</div>`:""}</div></div>
       ${avPic(x.n)?`<details class="how"><summary>Cómo se hace</summary><div class="avw">${avPic(x.n)}</div></details>`:""}
-      ${x.sets.map((s,j)=>`<div class="setrow ${s.ok?'ok':''}"><span class="sn">${j+1}</span><input inputmode="decimal" data-i="${i}" data-j="${j}" data-k="kg" value="${esc(s.kg)}" placeholder="kg"><span class="x">×</span><input inputmode="numeric" data-i="${i}" data-j="${j}" data-k="r" value="${esc(s.r)}" placeholder="${esc(lowRep(e[2])||"rep")}"><button class="setbtn" data-i="${i}" data-j="${j}">${s.ok?'✓':'Hecha'}</button></div>`).join("")}</div>`;
+      ${x.sets.map((s,j)=>`<div class="setrow ${s.ok?'ok':''}"><span class="sn">${j+1}</span><input inputmode="decimal" data-i="${i}" data-j="${j}" data-k="kg" value="${esc(s.kg)}" placeholder="kg"><span class="x">×</span><input inputmode="numeric" data-i="${i}" data-j="${j}" data-k="r" value="${esc(s.r)}" placeholder="${esc((ob&&ob.r)||lowRep(e[2])||"rep")}"><button class="setbtn" data-i="${i}" data-j="${j}">${s.ok?'✓':'Hecha'}</button></div>`).join("")}</div>`;
   });
   h+=`<div class="card exc ${wk.cardioOk?'done':''}"><b class="exn">Cardio final</b><div class="note">${esc(d.cardio)}</div><div class="setrow ${wk.cardioOk?'ok':''}"><input inputmode="numeric" id="wkCardio" value="${esc(wk.cardio)}" placeholder="min"><span class="x">min</span><button class="setbtn" id="wkCardioOk">${wk.cardioOk?'✓':'Hecho'}</button></div></div>
     <button class="btn big" id="wkEnd">Terminar y guardar</button><div style="height:8px"></div><button class="btn sec" id="wkDrop">Descartar sesión</button>`;
@@ -861,7 +884,7 @@ hb.addEventListener("click",async ev=>{
   }
   const b=t.closest(".setbtn"); if(b&&b.dataset.i!==undefined){
     const i=+b.dataset.i, j=+b.dataset.j, st=wk.ex[i].sets[j], e=DAYS[wk.dia].ex[i]||[];
-    st.ok=!st.ok; if(st.ok&&!st.r) st.r=lowRep(e[2])||"";
+    st.ok=!st.ok; if(st.ok&&!st.r){ const ob=objetivo(e,lastFor(wk.ex[i].n)); st.r=(ob&&ob.r)||lowRep(e[2])||""; }
     if(st.ok&&j>0&&!st.kg&&wk.ex[i].sets[j-1].kg) st.kg=wk.ex[i].sets[j-1].kg;
     wkSave(); renderHoy();
     if(st.ok) startRest(restFor(e));
